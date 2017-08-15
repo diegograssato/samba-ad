@@ -1,5 +1,5 @@
 #!/bin/bash
- 
+
 # Desativação dos recursos de autenticação via Kerberos pelo: Robson Vaamonde
 # Criação das variaveis de DHCPUSERNAME e DHCPPASSWORD
 # Modificação das linhas de ADD, DEL e UPD das Zonas.

@@ -13,6 +13,7 @@ debug: clean \
 test:
 	docker build -t $(IMAGE_DEV) --rm .
 	docker run --name $(CONATAINER_DEV) --rm --privileged \
+		-p 67:67 -p 67:67/udp \
 		-p 53:53 -p 53:53/udp \
 		-p 88:88 -p 88:88/udp -p 135:135 \
 		-p 137-138:137-138/udp -p 139:139 \
@@ -20,6 +21,7 @@ test:
 		-p 464:464 -p 464:464/udp -p 636:636 \
 		-p 1024-1044:1024-1044 -p 3268-3269:3268-3269 \
 		 --cap-add=all  \
+		 -v /home/diego/projects/docker-samba-ad-dc/Schemas:/tmp/schemas \
 		--hostname="ad.dtux.org" \
 		--dns-search="dtux.org" \
 		-e "SAMBA_DOMAIN"="DTUX" \
@@ -32,7 +34,8 @@ test:
 		-e "SAMBA_TLS"="false" \
 		-e "SAMBA_DHCP"="true" \
 		-e "SAMBA_ENABLE_NTP"="false" \
-		-e "SAMBA_DNS_REVERSA_ADDR"="0.17.172.in-addr.arpa" \
+		-e "SAMBA_DNS_REVERSA_ADDR"="0.168.192.in-addr.arpa" \
+		-e "SAMBA_HOST_IP=192.168.0.14" \
 		-t $(IMAGE_DEV)
 
 release:

@@ -46,10 +46,9 @@ RUN chown -R bind:bind /var/run/named
 
 # Add custom script
 ADD custom.sh /usr/local/bin/custom.sh
-ADD dhcpd.conf /etc/dhcpd/dhcpd.conf
-ADD dhcpd-update-samba-dns.conf /etc/dhcpd/dhcpd-update-samba-dns.conf
-ADD dhcp-dyndns.sh /usr/bin/dhcpd-update-samba-dns.sh
-RUN chmod +x /usr/local/bin/custom.sh && chmod +x /usr/bin/dhcpd-update-samba-dns.sh
+ADD dhcpd/dhcpd.conf /etc/dhcpd/dhcpd.conf
+COPY bin/* /etc/dhcpd/
+RUN chmod +x /usr/local/bin/custom.sh && chmod +x /etc/dhcpd/*.sh
 
 # Add supervisord and init
 ADD supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -57,6 +56,6 @@ ADD docker-entrypoint.sh /bin/docker-entrypoint.sh
 RUN chmod 755 /bin/docker-entrypoint.sh
 
 #VOLUME ["/var/lib/samba", "/etc/samba"]
-EXPOSE 22 53 389 88 135 139 138 445 464 3268 3269
+EXPOSE 22 53 389 88 135 139 138 445 464 3268 3269 67/udp 67/tcp
 ENTRYPOINT ["/bin/docker-entrypoint.sh"]
 CMD ["app:start"]

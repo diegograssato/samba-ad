@@ -8,7 +8,8 @@ LDAP_ALLOW_INSECURE=${LDAP_ALLOW_INSECURE:-false}
 SAMBA_DNS_BACKEND=${SAMBA_DNS_BACKEND:-SAMBA_INTERNAL}
 SAMBA_ROLE=${SAMBA_ROLE:-dc}
 SAMBA_HOST_IP="${SAMBA_HOST_IP:-$(hostname --all-ip-addresses |cut -f 1 -d' ')}"
-
+DHCP_USER="dhcpduser"
+DHCP_PASS="!P@ssw0rd123456"
 SAMBA_CONF_BACKUP=/var/lib/samba/private/smb.conf
 SSSD_CONF_BACKUP=/var/lib/samba/private/sssd.conf
 KRB_CONF_BACKUP=/var/lib/samba/private/krb5.conf
@@ -37,9 +38,12 @@ appSetup () {
     samba-tool domain provision \
               --use-rfc2307 \
               --domain=${SAMBA_DOMAIN} \
+              --use-xattr=no \
+              --use-ntvfs \
               --realm=${SAMBA_REALM} \
               --server-role=${SAMBA_ROLE}\
               --dns-backend=${SAMBA_DNS_BACKEND} \
+              --adminpass=${SAMBA_ADMIN_PASSWORD}  \
               --adminpass=${SAMBA_ADMIN_PASSWORD}  \
               --host-ip=${SAMBA_HOST_IP}
 
@@ -69,22 +73,15 @@ appSetup () {
     echo "nameserver ${SAMBA_HOST_IP}" >> /etc/resolv.conf
 
     if [[ ${SAMBA_DHCP} == "true" ]]; then
-      samba-tool user create dhcpduser --description="Unprivileged user for TSIG-GSSAPI DNS updates via ISC DHCP server" --random-password
+      samba-tool user create dhcpduser --description="Unprivileged user for TSIG-GSSAPI DNS updates via ISC DHCP server" ${DHCP_PASS}
       samba-tool user setexpiry dhcpduser --noexpiry
-      samba-tool group addmembers DnsAdmins dhcpduser
+      samba-tool group addmembers DnsAdmins ${DHCP_USER}
       #samba-tool domain exportkeytab /etc/dhcpd/dhcpd.keytab --principal=dhcpduser@$SAMBA_REALM
-      samba-tool domain exportkeytab /etc/dhcpd/dhcp-dns.keytab --principal=dhcpduser@$SAMBA_REALM
+      samba-tool domain exportkeytab /etc/dhcpd/dhcp-dns.keytab --principal=${DHCP_USER}@$SAMBA_REALM
       samba-tool domain exportkeytab /etc/dhcpd/dhcp-dns.keytab --principal=DNS/${HOSTNAME}@$SAMBA_REALM
 
     fi
-    if [[ -n ${SAMBA_DNS_REVERSA_ADDR} ]];then
 
-      echo "Creating reversezone ${SAMBA_DNS_REVERSA_ADDR} to ${SAMBA_REALM,,} domain."
-      # samba-tool dns zonecreate ${SAMBA_REALM,,} ${SAMBA_DNS_REVERSA_ADDR} -U Administrator --password=${SAMBA_ADMIN_PASSWORD}
-      # samba-tool dns zonecreate ${SAMBA_REALM,,} 10.in-addr.arpa -U Administrator --password=${SAMBA_ADMIN_PASSWORD}
-      # samba-tool dns zonelist ${SAMBA_REALM,,} --reverse -U Administrator --password=${SAMBA_ADMIN_PASSWORD}
-
-    fi
 
     if [[ ${SAMBA_TLS} == "true" ]];then
       SAMBA_TLS_KEY_PEM="/var/lib/samba/private/tls/${SAMBA_REALM,,}.key.pem"
@@ -114,7 +111,7 @@ appSetup () {
       echo "[program:bind9]" >> /etc/supervisor/conf.d/supervisord.conf
       echo "command=/usr/sbin/named -c /etc/bind/named.conf -u bind -f"  >> /etc/supervisor/conf.d/supervisord.conf
     else
-        apt-get remove bind9 dnsutils -y
+      apt-get remove bind9 dnsutils -y
     fi
 
     # if [[ ${SAMBA_ENABLE_NTP} == "true" ]];then
@@ -141,7 +138,7 @@ appStart () {
     else
         appSetup
     fi
-   
+
     # Start the services
     /usr/bin/supervisord
 }
